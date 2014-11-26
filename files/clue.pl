@@ -58,8 +58,6 @@ alreadyindb(X,Y):-(X==room -> room(Y);
 					suspect(Y)
 					).
 
-
-
 retractcard(X):-(alreadyindb(room, X)->  retract(room(X));
 				alreadyindb(suspect,X) ->retract(suspect(X));
 				retract(weapon(X))
@@ -69,9 +67,12 @@ games:-
 	write('Choose the following option'),nl,
 	write('1 ) make a suggestion'), nl,
 	write('2 ) view suggestioni history'), nl,
-	write('3 ) see what I learne,'), nl,
-	read(Choice), ( Choice  == 1 -> write('suggestion chosen'), nl, makesuggestion;
-					Choice == 2 -> write('view suggestion'); 
+	write('3 ) see possible suspects/weapons/places'), nl,
+	write('0 ) quit'),nl,nl,
+	read(Choice), ( Choice == 1 -> write('suggestion chosen'), nl, makesuggestion;
+					Choice == 2 -> write('view suggestion'), nl, getsuggestions, nl,games; 
+					Choice == 3 -> write('Possibilities are the following'), nl, printpossibility, nl, games;
+					Choice == 0 -> write('good bye');
 					write('learning history choice')).
 
 makesuggestion:-
@@ -87,8 +88,14 @@ makesuggestion:-
 						games
 						)
 					;
+					(foundcomb(A,B,C)->write('The Criminal is '),write(A),write(' who killed in '),write(B),write(' using '),
+						write(C)
 
-					games
+						;
+
+						games
+
+						)
 					).	
 
 foundanswer:- countnumbers(room,1),countnumbers(weapon,1),countnumbers(suspect, 1).
@@ -101,4 +108,23 @@ countnumbers(X,Y) :-
     length(Ns, Y).
 
 
+foundcomb(A,B,C):-alreadyindb(suspect,A),alreadyindb(room,B),alreadyindb(weapon,C).
 
+
+getsuggestions:-
+	findall((A,B,C),suggestion(A,B,C),Ns),printsuggestion(Ns).
+
+printsuggestion([]).
+printsuggestion([(A,B,C)|T]):-write('you suggested that '), write(A), write(' killed in '), write(B),
+ write(' using '), write(C), nl, printsuggestion(T).
+
+printpossibility:-
+	printsuspects,printplaces,printweapons.
+
+printsuspects:-
+	write('Possible suspects that are left are '), findall(A,suspect(A),Ns), write(Ns), nl.
+
+printplaces:-
+	write('Possible room that are left are '), findall(A,room(A),Ns), write(Ns), nl.	
+printweapons:-
+	write('Possible weapons that are left are '), findall(A,weapon(A),Ns), write(Ns), nl.
