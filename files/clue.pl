@@ -1,7 +1,7 @@
 % CPSC 312, Project 2
 % Authors
 % Name				Student number		CS id
-% Yoonsung any 		29838091			r4j8
+% Yoonsung Ahn 		29838091			r4j8
 % Ki Bum Kim		64650088			c4i7
 
 
@@ -11,6 +11,13 @@
 %	This program allows you to make a suggestion, see your past suggestions, track turn numbers, see possible options for you, make a guess for you
 %	with variety of options, and also make educated from other people's suggestions.
 %
+
+%
+%	This program tries to obtain information from other people's guesses and uses probability to determine the card combination that is likely
+%	to be a correct combination. If it is inferred that the colonel Mustard has higher chance of being a card murderer than Mrs. White, the guess
+%	that the program makes has higher chance to give Col. Mustard. However, since this is based on probability, there is also a chance Mrs. White is chosen in the guess
+% 	given by the program. The program also can retract card from a database from hearing other people's suggestion if it thinks that the card is clearly
+%	not in the correct combination.
 
 
 % A start method, user can add inputs to start the game
@@ -53,6 +60,7 @@ mycardsetters:-
 	write('What cards are you holding?'),nl,
 	read(Cards), savecards(Cards).
 
+%	Game variable setters helper functions.
 saveroom([]).
 saveroom([H|T]):-( not(alreadyindb(room,H))->assertz(room(H)),saveroom(T),addinfer(room,H);
 					saveroom(T)).
@@ -89,6 +97,8 @@ retractcard(X):-(alreadyindb(room, X)->  retract(room(X)),assertz(deletedroom(X)
 				).
 
 % The game function, this allows user to navigate through different options to make best use of program
+% The player can type 0~8 to navigate through program. 
+
 games:-
 	getturn,
 	write('Choose the following option'),nl,
@@ -123,16 +133,16 @@ makesuggestion:-
 	read(Choice), (Choice == 1 -> write('What card did you see?'), nl,read(Card),  retractcard(Card),
 
 					(foundanswer-> room(D),weapon(E),suspect(F),write('All that left is criminal ')
-						,write(F), write(' in room '),write(D), write(' using weapon '), write(E);
-						games
+						,write(F), write(' in room '),write(D), write(' using weapon '), write(E),nl,games;
+						nl,games
 						)
 					;
 					(foundcomb(A,B,C)->write('The Criminal is '),write(A),write(' who killed in '),write(B),write(' using '),
-						write(C)
+						write(C),nl,games
 
 						;
 
-						games
+						nl,games
 
 						)
 					).	
@@ -151,9 +161,11 @@ countnumbers(X,Y) :-
     length(Ns, Y).
 
 % Used to return the answer.
+
 foundcomb(A,B,C):-alreadyindb(suspect,A),alreadyindb(room,B),alreadyindb(weapon,C).
 
 % Used to print out the history of suggestions
+
 getsuggestions:-
 	findall((A,B,C),suggestion(A,B,C),Ns),printsuggestion(Ns).
 
@@ -162,6 +174,7 @@ printsuggestion([(A,B,C)|T]):-write('You suggested that '), write(A), write(' ki
  write(' using '), write(C), nl, printsuggestion(T).
 
 % Used to view lists of possible suspects, weapons, and rooms
+
 printpossibility:-
 	printsuspects,printplaces,printweapons.
 
@@ -174,6 +187,7 @@ printweapons:-
 	write('Possible weapons that are left are '), findall(A,weapon(A),Ns), write(Ns), nl.
 
 % Used to manually add card, if user wants
+
 addcard:-
 	write('What is the type of the card?'),nl,
 	read(Card),
@@ -182,8 +196,8 @@ addcard:-
 		Card == weapon-> addindb(weapon);
 		addindb(suspect)
 	),(foundanswer-> room(D),weapon(E),suspect(F),write('All that left is criminal ')
-						,write(F), write(' in room '),write(D), write(' using weapon '), write(E);
-						games
+						,write(F), write(' in room '),write(D), write(' using weapon '), write(E), nl,games;
+						nl,games
 						).
 
 addindb(X):-
@@ -194,6 +208,7 @@ addindb(X):-
 		).
 
 % Used to manually delete card, if user wants.
+
 deletecard:-
 	write('What is the type of the card?'),nl,
 	read(Card),
@@ -209,11 +224,12 @@ deleteindb(X):-
 		X == weapon->retract(weapon(Value)),assertz(deletedweapon(Value));
 				retract(suspect(Value)),assertz(deletedsuspect(Value))
 		),(foundanswer-> room(D),weapon(E),suspect(F),write('All that left is criminal ')
-						,write(F), write(' in room '),write(D), write(' using weapon '), write(E);
-						games
+						,write(F), write(' in room '),write(D), write(' using weapon '), write(E),nl,games;
+						nl,games
 						).
 
 % Used to create suggestion that is wrong, if user needs it.
+
 makewrongsuggestion:-
 	findall(L, deletedroom(L), Ls),findall(M, deletedweapon(M), Ms),findall(N, deletedsuspect(N), Ns),
     length(Ls,X),length(Ms, Y),length(Ns,Z),
@@ -222,6 +238,7 @@ makewrongsuggestion:-
     write('try tricking them with suspect '), write(Nx), write(' with weapon '), write(Mx), write(' in '), write(Lx),nl.
 
 % Used to learn from other people's suggestioins
+
 inference:-
 	write('Who was the suspect in other people\'s suggestion?'), nl,
 	read(Suspect),nl,
@@ -233,11 +250,20 @@ inference:-
 	read(Yesorno),nl,
 	(Yesorno==1->
 	(alreadyindb(deletedroom,Room),alreadyindb(deletedsuspect, Suspect),not(alreadyindb(deletedweapon,Weapon))->
-		write('It can be inferred that '), write(Weapon), write(' can be removed'), retractcard(Weapon);
+		write('It can be inferred that '), write(Weapon), write(' can be removed'), nl,retractcard(Weapon),
+		(foundanswer->
+		foundcomb(A,B,C)->write('The Criminal is '),write(A),write(' who killed in '),write(B),write(' using '),
+						write(C),nl; 	nl);
 	not(alreadyindb(deletedroom,Room)),alreadyindb(deletedsuspect, Suspect),alreadyindb(deletedweapon,Weapon)->
-		write('It can be inferred that '), write(Room), write(' can be removed'), retractcard(Room);
+		write('It can be inferred that '), write(Room), write(' can be removed'), retractcard(Room), nl,
+		(foundanswer->
+		foundcomb(A,B,C)->write('The Criminal is '),write(A),write(' who killed in '),write(B),write(' using '),
+						write(C),nl; 	nl);
 	alreadyindb(deletedroom,Room),not(alreadyindb(deletedsuspect, Suspect)),alreadyindb(deletedweapon,Weapon)->
-		write('It can be inferred that '), write(Suspect), write(' can be removed'), retractcard(Suspect);
+		write('It can be inferred that '), write(Suspect), write(' can be removed'), retractcard(Suspect), nl,
+		(foundanswer->
+		foundcomb(A,B,C)->write('The Criminal is '),write(A),write(' who killed in '),write(B),write(' using '),
+						write(C),nl; 	nl);
 	alreadyindb(deletedroom,Room),not(alreadyindb(deletedsuspect, Suspect)),not(alreadyindb(deletedweapon,Weapon))->
 		write('It can be inferred that '), write(Suspect), write(' and '),write(Weapon),write(' are not likely'),
 		findall(X,suspect(X),Xs),findall(Y,weapon(Y),Ys), 
@@ -305,7 +331,9 @@ retractinfer(X,Y):-
 		X==weapon->retractall(inferweapon(Y));
 		retractall(infersuspect(Y))
 		).
+
 % Make educated guess.
+
 geteducatedguess(Type):-
 	(Type==room->
 		findall(X,inferroom(X),Xs),findall(Y,deletedweapon(Y),Ys),findall(Z,deletedsuspect(Z),Zs), 
@@ -329,13 +357,16 @@ geteducatedguess(Type):-
 		).
 
 % Get the next turn
+
 nextturn:-
 	turn(X), X1 is X + 1, write(X1),retract(turn(X)),nump(Y),
 	(
 		X>Y->assertz(turn(1));
 		assertz(turn(X1))
 		).
+
 % Get the current turn and display
+
 getturn:-
 	turn(X),myturn(Y),
 	(
