@@ -1,4 +1,3 @@
-
 begin:-
 	write('Welcome to clue helper bot'), nl, nl,
 	roomsetters,nl,
@@ -21,7 +20,7 @@ weaponsetters:-
 	read([H|T]),assertz(weapon(H)),saveweapon(T).
 
 suspectsetters:-
-	write('which weapons are used in this version of the game?'),nl,
+	write('which suspects are used in this version of the game?'),nl,
 	read([H|T]), assertz(suspect(H)),savesuspect(T).
 
 numsetters:-
@@ -55,12 +54,15 @@ savecards([H|T]):- assertz(mycards(H)), retractcard(H), savecards(T).
 
 alreadyindb(X,Y):-(X==room -> room(Y);
 					X == weapon -> weapon(Y);
+					X == deletedroom -> deletedroom(Y);
+					X == deletedsuspect -> deletedsuspect(Y);
+					X == deletedweapon -> deletedweapon(Y);
 					suspect(Y)
 					).
 
-retractcard(X):-(alreadyindb(room, X)->  retract(room(X));
-				alreadyindb(suspect,X) ->retract(suspect(X));
-				retract(weapon(X))
+retractcard(X):-(alreadyindb(room, X)->  retract(room(X)),assertz(deletedroom(X));
+				alreadyindb(suspect,X) ->retract(suspect(X)),assertz(deletedsuspect(X));
+				retract(weapon(X)),assertz(deletedweapon(X))
 				).
 
 games:-
@@ -68,12 +70,23 @@ games:-
 	write('1 ) make a suggestion'), nl,
 	write('2 ) view suggestioni history'), nl,
 	write('3 ) see possible suspects/weapons/places'), nl,
+	write('4 ) adding a suspicious card'),nl,
+	write('5 ) delete a suspicious card'),nl,
+	write('6 ) make me a suggestion'),nl,
+	write('7 ) infer from other people\'s suggestion'),nl,
+	write('8 ) make me a suggestion that will trick other players'),nl,
 	write('0 ) quit'),nl,nl,
-	read(Choice), ( Choice == 1 -> write('suggestion chosen'), nl, makesuggestion;
-					Choice == 2 -> write('view suggestion'), nl, getsuggestions, nl,games; 
-					Choice == 3 -> write('Possibilities are the following'), nl, printpossibility, nl, games;
+	read(Choice), ( Choice == 1 -> nl, makesuggestion;
+					Choice == 2 -> nl, getsuggestions, nl,games; 
+					Choice == 3 -> nl, printpossibility, nl, games;
+					Choice == 4 -> nl, addcard, nl;
+					Choice == 5 -> nl, deletecard, nl;
+					Choice == 7 -> nl, inference, nl, games;
+					Choice == 8 -> nl, makewrongsuggestion, games;
 					Choice == 0 -> write('good bye');
 					write('learning history choice')).
+
+
 
 makesuggestion:-
 	write('write suggestion in following manner [person, place, weapon]'),nl,
@@ -128,3 +141,72 @@ printplaces:-
 	write('Possible room that are left are '), findall(A,room(A),Ns), write(Ns), nl.	
 printweapons:-
 	write('Possible weapons that are left are '), findall(A,weapon(A),Ns), write(Ns), nl.
+
+addcard:-
+	write('What is the type of the card?'),nl,
+	read(Card),
+	(
+		Card == room-> addindb(room);
+		Card == weapon-> addindb(weapon);
+		addindb(suspect)
+	),(foundanswer-> room(D),weapon(E),suspect(F),write('All that left is criminal ')
+						,write(F), write(' in room '),write(D), write(' using weapon '), write(E);
+						games
+						).
+
+addindb(X):-
+	write('What is the value of the card?'), nl, read(Value),
+	(X == room->  assertz(room(Value));
+		X == weapon->assertz(weapon(Value));
+				assertz(suspect(Value))
+		).
+
+
+deletecard:-
+	write('What is the type of the card?'),nl,
+	read(Card),
+	(
+		Card == room-> deleteindb(room);
+		Card == weapon-> deleteindb(weapon);
+		deleteindb(suspect)
+	).
+
+deleteindb(X):-
+	write('What is the value of the card?'), nl, read(Value),
+	(X == room->  retract(room(Value)),assertz(deletedroom(Value));
+		X == weapon->retract(weapon(Value)),assertz(deletedweapon(Value));
+				retract(suspect(Value)),assertz(deletedsuspect(Value))
+		),(foundanswer-> room(D),weapon(E),suspect(F),write('All that left is criminal ')
+						,write(F), write(' in room '),write(D), write(' using weapon '), write(E);
+						games
+						).
+
+makewrongsuggestion:-
+	findall(L, deletedroom(L), Ls),findall(M, deletedweapon(M), Ms),findall(N, deletedsuspect(N), Ns),
+    length(Ls,X),length(Ms, Y),length(Ns,Z),
+    random(0,X,Xr),random(0,Y,Yr),random(0,Z,Zr),
+    random_member(Lx, Ls),random_member(Mx, Ms),random_member(Nx, Ns),
+    write('try tricking them with suspect '), write(Nx), write(' with weapon '), write(Mx), write(' in '), write(Lx),nl.
+
+inference:-
+	write('Who was the suspect in other people\'s suggestion?'), nl,
+	read(Suspect),nl,
+	write('What was the weapon in other people\'s suggestion?'), nl,
+	read(Weapon),nl,
+	write('What was the room in other people\'s suggestion?'), nl,
+	read(Room),nl,
+	write('Did they find a card? (1 for yes, 0 for no)'),nl,
+	read(Yesorno),nl,
+	(Yesorno==1->
+	(alreadyindb(deletedroom,Room),alreadyindb(deletedsuspect, Suspect),not(alreadyindb(deletedweapon,Weapon))->
+		write('It can be inferred that '), write(Weapon), write(' can be removed'), retractcard(Weapon);
+	not(alreadyindb(deletedroom,Room)),alreadyindb(deletedsuspect, Suspect),alreadyindb(deletedweapon,Weapon)->
+		write('It can be inferred that '), write(Room), write(' can be removed'), retractcard(Room);
+	alreadyindb(deletedroom,Room),not(alreadyindb(deletedsuspect, Suspect)),alreadyindb(deletedweapon,Weapon)->
+		write('It can be inferred that '), write(Suspect), write(' can be removed'), retractcard(Suspect);
+		write('Nothing can be inferred at this point')
+		);
+		write('Nothing can be inferred at this point')
+	).
+
+
