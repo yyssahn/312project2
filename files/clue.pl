@@ -28,20 +28,20 @@ numsetters:-
 	read(Nump), savenumber(Nump).
 
 turnsetters:-
-	write('when is your turnsetters in number?'),nl,
+	write('when is your turn in number?'),nl,
 	read(Numt), saveturn(Numt).
 mycardsetters:-
 	write('what cards are you holding?'),nl,
 	read(Cards), savecards(Cards).
 saveroom([]).
-saveroom([H|T]):-( not(alreadyindb(room,H))->assertz(room(H)),saveroom(T);
+saveroom([H|T]):-( not(alreadyindb(room,H))->assertz(room(H)),saveroom(T),addinfer(room,H);
 					saveroom(T)).
 
 saveweapon([]).
-saveweapon([H|T]):-( not(alreadyindb(weapon,H))->assertz(weapon(H)),saveweapon(T);
+saveweapon([H|T]):-( not(alreadyindb(weapon,H))->assertz(weapon(H)),saveweapon(T),addinfer(weapon,H);
 					saveweapon(T)).
 savesuspect([]).
-savesuspect([H|T]):-( not(alreadyindb(suspect,H))->assertz(suspect(H)),savesuspect(T);
+savesuspect([H|T]):-( not(alreadyindb(suspect,H))->assertz(suspect(H)),savesuspect(T),addinfer(suspect,H);
 					savesuspect(T)).
 
 savenumber(X):-assertz(nump(X)).
@@ -60,15 +60,15 @@ alreadyindb(X,Y):-(X==room -> room(Y);
 					suspect(Y)
 					).
 
-retractcard(X):-(alreadyindb(room, X)->  retract(room(X)),assertz(deletedroom(X));
-				alreadyindb(suspect,X) ->retract(suspect(X)),assertz(deletedsuspect(X));
-				retract(weapon(X)),assertz(deletedweapon(X))
+retractcard(X):-(alreadyindb(room, X)->  retract(room(X)),assertz(deletedroom(X)),retractinfer(room,X);
+				alreadyindb(suspect,X) ->retract(suspect(X)),assertz(deletedsuspect(X)),retractinfer(suspect,X);
+				retract(weapon(X)),assertz(deletedweapon(X)),retractinfer(weapon,X)
 				).
 
 games:-
 	write('Choose the following option'),nl,
 	write('1 ) make a suggestion'), nl,
-	write('2 ) view suggestioni history'), nl,
+	write('2 ) view suggestion history'), nl,
 	write('3 ) see possible suspects/weapons/places'), nl,
 	write('4 ) adding a suspicious card'),nl,
 	write('5 ) delete a suspicious card'),nl,
@@ -209,4 +209,62 @@ inference:-
 		write('Nothing can be inferred at this point')
 	).
 
+
+makeguess:-
+	write('Choose the following option'),nl,
+	write('1 ) make a random possible guess'), nl,
+	write('2 ) make a possible guess based on chance'), nl,
+	write('3 ) see possible suspects/weapons/places'), nl,
+	write('4 ) adding a suspicious card'),nl,
+	write('5 ) delete a suspicious card'),nl,
+	write('6 ) make me a suggestion'),nl,
+	write('7 ) infer from other people\'s suggestion'),nl,
+	write('8 ) make me a suggestion that will trick other players'),nl,
+	write('0 ) go back'),nl,nl,
+	read(Choice), ( Choice == 1 -> nl, randomguess,games;
+					Choice == 2 -> nl, getsuggestions, nl,games; 
+					Choice == 3 -> nl, printpossibility, nl, games;
+					Choice == 4 -> nl, addcard, nl;
+					Choice == 5 -> nl, deletecard, nl;
+					Choice == 7 -> nl, inference, nl, games;
+					Choice == 8 -> nl, makewrongsuggestion, games;
+					games).
+
+randomguess:-
+	findall(X,room(X),Xs),findall(Y,suspect(Y),Ys),findall(Z,weapon(Z),Zs),
+	random_member(Xx,Xs),random_member(Yx,Ys),random_member(Zx,Zs),
+	write('The randome guess is that the murderer is '), write(Yx), write(' in room '),
+	write(Xx), write(' using weapon '), write(Zx).
+addinfer(X,Y):-
+	(
+		X==room->assertz(inferroom(Y));
+		X==weapon->assertz(inferweapon(Y));
+		assertz(infersuspect(Y))
+		).
+
+retractinfer(X,Y):-
+	(
+		X==room = retractall(inferroom(Y));
+		X==weapon = retractall(inferweapon(Y));
+		retractall(infersuspect(Y))
+		).
+
+geteducatedguess(X):-
+	(X==room->findall(X,inferroom(X),Xs),findall(Y,deletedweapon(Y),Ys),findall(Z,deletedsuspect(Z),Zs),
+		random_member(Xx,Xs),random_member(Yx,Ys),random_member(Zx,Zs),
+		write('The educated guess on suspect domain is that the murderer is '), write(Zx), write(' in room '),
+		write(Xx), write(' using weapon '), write(Yx);
+		X==weapon->findall(X,deletedroom(X),Xs),findall(Y,inferweapon(Y),Ys),findall(Z,deletedsuspect(Z),Zs),
+		random_member(Xx,Xs),random_member(Yx,Ys),random_member(Zx,Zs),
+		write('The educated guess on suspect domain is that the murderer is '), write(Zx), write(' in room '),
+		write(Xx), write(' using weapon '), write(Yx);
+		X==suspect->findall(X,deletedroom(X),Xs),findall(Y,deletedweapon(Y),Ys),findall(Z,infersuspect(Z),Zs),
+		random_member(Xx,Xs),random_member(Yx,Ys),random_member(Zx,Zs),
+		write('The educated guess on suspect domain is that the murderer is '), write(Zx), write(' in room '),
+		write(Xx), write(' using weapon '), write(Yx);
+		findall(X,inferroom(X),Xs),findall(Y,inferweapon(Y),Ys),findall(Z,infersuspect(Z),Zs),
+		random_member(Xx,Xs),random_member(Yx,Ys),random_member(Zx,Zs),
+		write('The educated guess on every domain is that the murderer is '), write(Zx), write(' in room '),
+		write(Xx), write(' using weapon '), write(Yx)
+		).
 
